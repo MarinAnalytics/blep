@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>blep.click — boop the snoot</title>
+  <style>
+    :root { --bg:#0c0f14; --fg:#e7ecf3; --accent:#ff4d8d; --muted:#98a2b3; }
+    html,body{height:100%;margin:0;background:radial-gradient(1200px 800px at 50% 0%, #121825, #0c0f14);color:var(--fg);font:16px/1.2 system-ui,-apple-system,Segoe UI,Roboto}
+    .wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px}
+    h1{margin:0;font-size:clamp(20px,3vw,28px);font-weight:800;letter-spacing:.3px}
+    .subtitle{color:var(--muted);font-size:14px}
+    .counter{display:flex;gap:16px;align-items:baseline}
+    .counter .n{font-variant-numeric:tabular-nums; font-size:40px; font-weight:900}
+    .btn{border:0;background:transparent;color:var(--muted);cursor:pointer}
+    /* CAT */
+    .cat{width:min(80vmin,520px);aspect-ratio:1;display:grid;place-items:center;cursor:pointer;user-select:none; -webkit-tap-highlight-color:transparent}
+    .card{border-radius:24px;padding:24px;background:linear-gradient(180deg,#161b29, #0f1420);box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04)}
+    svg{width:100%;height:auto;transition:transform .08s ease}
+    .cat.blep svg{transform:translateY(2px) scale(0.985)}
+    .hint{color:var(--muted);font-size:13px}
+    /* Badge */
+    .badge{display:inline-block;background:rgba(255,77,141,.15);border:1px solid rgba(255,77,141,.35);color:#ffd9e8;
+      padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.3px}
+    /* Milestone pulse */
+    .pulse{animation:pulse .7s ease}
+    @keyframes pulse{0%{filter:drop-shadow(0 0 0 rgba(255,77,141,.0))}50%{filter:drop-shadow(0 0 16px rgba(255,77,141,.7))}100%{filter:drop-shadow(0 0 0 rgba(255,77,141,.0))}}
+    a { color: #c9e3ff; text-decoration: none; border-bottom: 1px dashed rgba(201,227,255,.5) }
+
+    /* Full-screen image fill */
+    .wrap { position: relative; z-index: 1; pointer-events: none; }
+    .card.cat { padding: 0; border-radius: 0; background: none; box-shadow: none; }
+    .cat { width: 100vw; height: 100vh; max-width: none; aspect-ratio: auto; }
+    #catImg { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; display: block; z-index: 0; pointer-events: none; }
+    .btn { pointer-events: auto; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">blep.click</span>
+    <h1>Boop the snoot. Get a <span style="color:var(--accent)">blep</span>.</h1>
+    <div class="subtitle">Tap/click the cat to make the tongue pop out. Every boop counts.</div>
+
+    <div id="catCard" class="card cat" aria-label="cat — tap to blep" role="button">
+      <!-- Cat image: tongue in (default state) -->
+      <img id="catImg" src="img/closed.jpg" alt="Cat with tongue in" />
+    </div>
+
+    <div class="counter">
+      <div class="n" id="count">0</div>
+      <div id="cps" class="subtitle">0.0 bleps/sec</div>
+      <button id="reset" class="btn" title="Reset local counter">↺ reset</button>
+    </div>
+
+    <div class="hint">MVP demo (local). Global leaderboard & antifarm coming next.</div>
+  </div>
+
+  <script>
+    // Simple WebAudio "pop"
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let actx;
+    function pop() {
+      if (!actx) actx = new AudioCtx();
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = 'square';
+      o.frequency.setValueAtTime(880, actx.currentTime); // Higher pitch for popcat sound
+      o.frequency.exponentialRampToValueAtTime(440, actx.currentTime + 0.05);
+      g.gain.setValueAtTime(0.001, actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.5, actx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.07);
+      o.connect(g).connect(actx.destination);
+      o.start(); o.stop(actx.currentTime + 0.08);
+    }
+
+  const cat = document.getElementById('catCard');
+  const catImg = document.getElementById('catImg');
+  const countEl = document.getElementById('count');
+  const cpsEl = document.getElementById('cps');
+  const resetBtn = document.getElementById('reset');
+
+    let count = Number(localStorage.getItem('blep_count')||0);
+    let last = performance.now(), clicks = [];
+    let cooldown = false;
+
+    function renderCount() {
+      countEl.textContent = count.toLocaleString();
+    }
+    renderCount();
+
+    function blepDown() {
+      // Show tongue out
+      catImg.src = 'img/out.jpg';
+      pop();
+      count++;
+      localStorage.setItem('blep_count', count);
+      renderCount();
+
+      // cps calc (rolling 2s window)
+      const now = performance.now();
+      clicks.push(now);
+      while (clicks.length && now - clicks[0] > 2000) clicks.shift();
+      const cps = clicks.length / 2;
+      cpsEl.textContent = `${cps.toFixed(1)} bleps/sec`;
+
+      // milestone sparkle hook (for future confetti)
+      if (count % 100 === 0) {
+        document.title = `🎉 ${count.toLocaleString()} bleps — blep.click`;
+      }
+    }
+
+    function blepUp() {
+      // Hide tongue (back in)
+      catImg.src = 'img/closed.jpg';
+    }
+
+    // Interaction bindings (desktop + mobile)
+    // Click anywhere in the window (except reset button) to blep
+    window.addEventListener('pointerdown', e => {
+      if (e.target.closest('#reset')) return;
+      blepDown();
+    });
+     // Also listen globally to ensure release retracts tongue
+     window.addEventListener('pointerup', e => {
+       blepUp();
+     });
+     window.addEventListener('pointercancel', e => {
+       blepUp();
+     });
+     // Keyboard support
+     window.addEventListener('keydown', e => {
+       if (e.key === ' ' || e.key === 'Enter') {
+         blepDown();
+       }
+     });
+     window.addEventListener('keyup', e => {
+       if (e.key === ' ' || e.key === 'Enter') {
+         blepUp();
+       }
+     });
+
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Reset your local blep counter?')) {
+        count = 0; clicks = [];
+        localStorage.removeItem('blep_count');
+        renderCount(); cpsEl.textContent = '0.0 bleps/sec';
+      }
+    });
+  </script>
+</body>
+</html>
