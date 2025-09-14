@@ -11,9 +11,11 @@
 
 SHELL := /bin/bash
 FRONTEND_DIR := frontend
+BACKEND_DIR := backend
 NPM := npm --prefix $(FRONTEND_DIR)
+NPM_BACK := npm --prefix $(BACKEND_DIR)
 
-.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages
+.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create
 
 help:
 	@echo "Available targets:"
@@ -52,3 +54,23 @@ deploy-gh-pages: frontend-build ## Deploy dist to gh-pages branch (force push)
 	 git remote add origin `git config --get remote.origin.url`; \
 	 git push -f origin gh-pages; \
 	 popd >/dev/null; rm -rf $$tmp_dir; )
+
+backend-install: ## Install backend dependencies
+	$(NPM_BACK) install
+
+backend-dev: backend-install ## Run backend in dev mode (nodemon)
+	$(NPM_BACK) run dev
+
+backend-start: backend-install ## Start backend normally
+	$(NPM_BACK) start
+
+backend-migrate: backend-install ## Run pending migrations
+	cd $(BACKEND_DIR) && npx node-pg-migrate up -m migrations
+
+backend-migrate-up: backend-migrate ## Alias for backend-migrate
+
+backend-migrate-down: backend-install ## Rollback one migration
+	cd $(BACKEND_DIR) && npx node-pg-migrate down -m migrations -f 1
+
+backend-migrate-create: backend-install ## Create a new timestamped migration: NAME=<desc>
+	cd $(BACKEND_DIR) && npx node-pg-migrate create "$(NAME)" -m migrations
