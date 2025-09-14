@@ -81,10 +81,15 @@ TEST_DB_URL=postgres://blep:blep@localhost:54329/blep_test
 
 backend-test-db-up: ## Start ephemeral Postgres for backend tests
 	docker compose -f docker-compose.test.yml up -d
-	@echo "Waiting for Postgres health..." && \
-until [ "$$(docker inspect -f '{{.State.Health.Status}}' $(TEST_DB_CONTAINER))" = "healthy" ]; do \
-  sleep 1; printf '.'; \
-done; echo " ready";
+	@echo "Waiting for Postgres health..."; \
+cid=$$(docker compose -f docker-compose.test.yml ps -q $(TEST_DB_CONTAINER)); \
+if [ -z "$$cid" ]; then echo "Container not found"; exit 1; fi; \
+for i in $$(seq 1 30); do \
+	status=$$(docker inspect -f '{{.State.Health.Status}}' $$cid 2>/dev/null || echo 'starting'); \
+	if [ "$$status" = "healthy" ]; then echo " Postgres ready"; break; fi; \
+	if [ $$i -eq 30 ]; then echo " Timeout waiting for Postgres (status=$$status)"; exit 1; fi; \
+	sleep 1; printf '.'; \
+done
 
 backend-test-db-down: ## Stop test Postgres
 	docker compose -f docker-compose.test.yml down -v
