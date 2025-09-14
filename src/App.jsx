@@ -42,10 +42,25 @@ export default function App() {
       <div
         id="targetArea"
         ref={targetRef}
+        role="button"
+        aria-label="Boop the snoot"
+        tabIndex={0}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onTouchStart={(e) => { e.preventDefault(); handleMouseDown(); }}
         onTouchEnd={(e) => { e.preventDefault(); handleMouseUp(); }}
+        onKeyDown={(e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            handleMouseDown();
+          }
+        }}
+        onKeyUp={(e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            handleMouseUp();
+          }
+        }}
       />
       <div id="blepCounterContainer">
         {flag.url && <img id="countryFlag" src={flag.url} alt={flag.alt} />}

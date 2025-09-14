@@ -26,6 +26,20 @@ Preview the production build:
 npm run preview
 ```
 
+### Testing
+Run the test suite:
+```
+npm test
+```
+Watch mode:
+```
+npm run test:watch
+```
+Coverage report (text + lcov):
+```
+npm test -- --coverage
+```
+
 ### Environment Variables
 Copy `.env.example` to `.env` and adjust as needed.
 
