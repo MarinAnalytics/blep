@@ -5,7 +5,7 @@ import { query } from './db.js';
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 app.use(express.json());
 
 const corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
@@ -49,7 +49,14 @@ app.post('/api/blep', async (req, res) => {
 // Health
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
-const port = process.env.PORT || 4000;
-app.listen(port, () => {
-  console.log(`Backend listening on :${port}`);
-});
+export function start() {
+  const port = process.env.PORT || 4000;
+  return app.listen(port, () => {
+    console.log(`Backend listening on :${port}`);
+  });
+}
+
+// Start only if run directly (node src/server.js)
+if (process.argv[1] && process.argv[1].includes('server.js')) {
+  start();
+}
