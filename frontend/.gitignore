@@ -1,0 +1,36 @@
+### OS / Editor ###
+.DS_Store
+.vscode
+.idea
+
+### Node / Package Managers ###
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+### Build Output ###
+dist/
+.vite/
+
+### Caches ###
+.cache/
+.eslintcache
+
+### Env Files ###
+.env
+.env.*
+!.env.example
+
+### Test / Coverage ###
+coverage/
+
+### Temporary ###
+tmp/
+temp/
+*.tmp
+
+### Misc ###
+*.local

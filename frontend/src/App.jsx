@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Leaderboard from './Leaderboard.jsx';
-import blepAudio from '../blep.wav';
-import inImg from '../img/in.jpg';
-import outImg from '../img/out.jpg';
+import blepAudio from '../assets/audio/blep.wav';
+import inImg from '../assets/img/in.jpg';
+import outImg from '../assets/img/out.jpg';
 
 export default function App() {
   const initialCount = Number(import.meta.env.VITE_INITIAL_BLEP_COUNT || 0) || 0;
