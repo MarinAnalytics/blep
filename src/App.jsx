@@ -26,15 +26,41 @@ export default function App() {
       .catch(() => setFlag({ url: '', alt: 'Flag unavailable' }));
   }, []);
 
-  const handleMouseDown = () => {
+  // Preload alternate image to avoid delay on first press (especially iOS Safari)
+  useEffect(() => {
+    const preload = new Image();
+    preload.src = outImg;
+  }, []);
+
+  const swapToOut = () => {
+    // Direct DOM update then state update (some tablets delay React state-driven <img> src paint)
+    const imgEl = document.getElementById('catImg');
+    if (imgEl && imgEl.getAttribute('src') !== outImg) {
+      imgEl.setAttribute('src', outImg);
+    }
     setCatSrc(outImg);
+  };
+  const swapToIn = () => {
+    const imgEl = document.getElementById('catImg');
+    if (imgEl && imgEl.getAttribute('src') !== inImg) {
+      imgEl.setAttribute('src', inImg);
+    }
+    setCatSrc(inImg);
+  };
+
+  const handlePress = () => {
+    swapToOut();
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
-      audioRef.current.play();
+      audioRef.current.play().catch(() => {});
     }
     setBlepCount(c => c + 1);
+    // Force layout to flush quickly (helps some Safari repaint timing)
+    if (typeof window !== 'undefined') {
+      requestAnimationFrame(() => {});
+    }
   };
-  const handleMouseUp = () => setCatSrc(inImg);
+  const handleRelease = () => swapToIn();
 
   return (
     <div className="app-root">
@@ -45,20 +71,19 @@ export default function App() {
         role="button"
         aria-label="Boop the snoot"
         tabIndex={0}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onTouchStart={(e) => { e.preventDefault(); handleMouseDown(); }}
-        onTouchEnd={(e) => { e.preventDefault(); handleMouseUp(); }}
+    onPointerDown={(e) => { e.preventDefault(); handlePress(); }}
+    onPointerUp={(e) => { e.preventDefault(); handleRelease(); }}
+    onPointerLeave={(e) => { if (e.pointerType !== 'mouse') handleRelease(); }}
         onKeyDown={(e) => {
           if (e.key === ' ' || e.key === 'Enter') {
             e.preventDefault();
-            handleMouseDown();
+      handlePress();
           }
         }}
         onKeyUp={(e) => {
           if (e.key === ' ' || e.key === 'Enter') {
             e.preventDefault();
-            handleMouseUp();
+      handleRelease();
           }
         }}
       />

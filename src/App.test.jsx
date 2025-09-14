@@ -20,13 +20,13 @@ describe('App', () => {
     expect(screen.getByText(initial.toLocaleString())).toBeInTheDocument();
   });
 
-  test('increments counter on click/press', () => {
+  test('increments counter on click/press', async () => {
     import.meta.env.VITE_INITIAL_BLEP_COUNT = '0';
     render(<App />);
     const button = screen.getByRole('button', { name: /boop the snoot/i });
-    fireEvent.mouseDown(button);
-    fireEvent.mouseUp(button);
-    expect(screen.getByText('1')).toBeInTheDocument();
+    fireEvent.pointerDown(button, { pointerId: 1, pointerType: 'touch' });
+    fireEvent.pointerUp(button, { pointerId: 1, pointerType: 'touch' });
+    expect(await screen.findByText('1')).toBeInTheDocument();
   });
 
   test('keyboard activation increments counter', () => {
