@@ -1,0 +1,10 @@
+node_modules
+Dockerfile
+.git
+.gitignore
+*.log
+*.swp
+.env
+.env.*
+coverage
+tests
