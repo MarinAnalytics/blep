@@ -15,7 +15,7 @@ BACKEND_DIR := backend
 NPM := npm --prefix $(FRONTEND_DIR)
 NPM_BACK := npm --prefix $(BACKEND_DIR)
 
-.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create
+.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create backend-test-db-up backend-test-db-down backend-test backend-test-watch
 
 help:
 	@echo "Available targets:"
@@ -74,3 +74,24 @@ backend-migrate-down: backend-install ## Rollback one migration
 
 backend-migrate-create: backend-install ## Create a new timestamped migration: NAME=<desc>
 	cd $(BACKEND_DIR) && npx node-pg-migrate create "$(NAME)" -m migrations
+
+# --- Backend Testing with Dockerized Postgres ---
+TEST_DB_CONTAINER=pgtest
+TEST_DB_URL=postgres://blep:blep@localhost:54329/blep_test
+
+backend-test-db-up: ## Start ephemeral Postgres for backend tests
+	docker compose -f docker-compose.test.yml up -d
+	@echo "Waiting for Postgres health..." && \
+until [ "$$(docker inspect -f '{{.State.Health.Status}}' $(TEST_DB_CONTAINER))" = "healthy" ]; do \
+  sleep 1; printf '.'; \
+done; echo " ready";
+
+backend-test-db-down: ## Stop test Postgres
+	docker compose -f docker-compose.test.yml down -v
+
+backend-test: backend-install backend-test-db-up ## Run backend test suite against Docker Postgres
+	cd $(BACKEND_DIR) && DATABASE_URL=$(TEST_DB_URL) npx node-pg-migrate up -m migrations && DATABASE_URL=$(TEST_DB_URL) npm test || (code=$$?; $(MAKE) backend-test-db-down; exit $$code)
+	$(MAKE) backend-test-db-down
+
+backend-test-watch: backend-install backend-test-db-up ## Run backend tests in watch (leave DB up) CTRL+C then run backend-test-db-down
+	cd $(BACKEND_DIR) && DATABASE_URL=$(TEST_DB_URL) npx node-pg-migrate up -m migrations && DATABASE_URL=$(TEST_DB_URL) npm run test:watch
