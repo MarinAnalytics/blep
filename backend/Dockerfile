@@ -1,8 +1,7 @@
 FROM node:20-alpine AS base
 WORKDIR /app
-ENV NODE_ENV=production
 
-# Install dependencies (include dev so migrations tool is available)
+# Install dependencies including dev (needed for node-pg-migrate)
 COPY package*.json ./
 RUN npm ci
 
