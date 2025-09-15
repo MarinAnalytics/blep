@@ -81,7 +81,10 @@ export default function App() {
   }, [apiBase, flag.code, flag.name]);
 
   const scheduleFlush = () => {
-    if (flushTimerRef.current) return;
+    // True debounce: reset timer on every new press so flush happens debounceMs after the *last* press.
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+    }
     flushTimerRef.current = setTimeout(flushIncrements, debounceMs);
   };
 
