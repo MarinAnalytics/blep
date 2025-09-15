@@ -88,50 +88,76 @@ jobs:
           --health-interval 1s \
           --health-timeout 5s \
           --health-retries 30
-      backend:
-        image: node:20-alpine
-        env:
-          DATABASE_URL: postgres://blep:blep@postgres:5432/blep
-          PORT: 4000
-          CORS_ORIGINS: http://localhost:8080
-        ports:
-          - 4000:4000
-        options: >-
-          --health-cmd "wget -qO- http://localhost:4000/healthz || exit 1" \
-          --health-interval 2s \
-          --health-timeout 5s \
-          --health-retries 30
-        command: >-
-          sh -c "apk add --no-cache bash curl wget git && cd /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/backend && npm ci && npx node-pg-migrate up -m migrations && node src/server.js"
-      frontend:
-        image: node:20-alpine
-        env:
-          VITE_API_BASE: http://localhost:4000
-        ports:
-          - 8080:8080
-        options: >-
-          --health-cmd "wget -qO- http://localhost:8080 || exit 1" \
-          --health-interval 2s \
-          --health-timeout 5s \
-          --health-retries 30
-        command: >-
-          sh -c "apk add --no-cache bash curl wget git && cd /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/frontend && npm ci && npm run build && npx serve -s dist -l 8080"
     steps:
       - uses: actions/checkout@v4
-      - name: Install E2E deps
-        run: npm --prefix e2e ci
+      - name: Setup Node (backend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Run migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://blep:blep@localhost:5432/blep
+        run: npx node-pg-migrate up -m migrations
+      - name: Start backend
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://blep:blep@localhost:5432/blep
+          PORT: 4000
+          CORS_ORIGINS: http://localhost:8080
+        run: |
+          node src/server.js &
+          echo $! > backend.pid
       - name: Wait for backend health
         run: |
           for i in {1..60}; do
-            if curl -sf http://localhost:4000/healthz > /dev/null; then echo OK; exit 0; fi
+            if curl -sf http://localhost:4000/healthz > /dev/null; then echo "Backend up"; break; fi
             sleep 1
+            if [ "$i" -eq 60 ]; then echo "Backend failed to start" >&2; exit 1; fi
           done
-          echo "Backend failed to become healthy" >&2; exit 1
+      - name: Setup Node (frontend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_BASE: http://localhost:4000
+        run: npm run build
+      - name: Serve frontend
+        working-directory: frontend
+        run: |
+          npx --yes serve -s dist -l 8080 &
+          echo $! > frontend.pid
+      - name: Wait for frontend
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:8080 > /dev/null; then echo "Frontend up"; break; fi
+            sleep 1
+            if [ "$i" -eq 60 ]; then echo "Frontend failed to start" >&2; exit 1; fi
+          done
+      - name: Install E2E deps
+        run: npm --prefix e2e ci
       - name: Run Selenium E2E
         env:
           FRONTEND_URL: http://localhost:8080
           BACKEND_HEALTH: http://localhost:4000/healthz
         run: node e2e/test.e2e.mjs
+      - name: Cleanup background processes
+        if: always()
+        run: |
+          kill $(cat backend.pid 2>/dev/null) 2>/dev/null || true
+          kill $(cat frontend.pid 2>/dev/null) 2>/dev/null || true
 
   lint-build:
     name: Build Frontend (Smoke)
