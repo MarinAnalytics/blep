@@ -41,10 +41,7 @@ jobs:
           POSTGRES_PASSWORD: blep
           POSTGRES_DB: blep_test
         options: >-
-          --health-cmd "pg_isready -U blep" \
-          --health-interval 1s \
-          --health-timeout 5s \
-          --health-retries 30
+          --health-cmd "pg_isready -U blep" --health-interval 5s --health-timeout 5s --health-retries 10
         ports:
           - 54329:5432
     env:
@@ -62,6 +59,11 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - name: Install
         run: npm ci
+      - name: Wait for Postgres
+        env:
+          TEST_DB_URL: ${{ env.TEST_DB_URL }}
+        run: |
+          node -e 'const {Client}=require("pg");(async()=>{for(let i=0;i<40;i++){try{const c=new Client({connectionString:process.env.TEST_DB_URL});await c.connect();await c.end();console.log("Postgres ready");process.exit(0);}catch(e){await new Promise(r=>setTimeout(r,1000));}}console.error("Postgres not ready in time");process.exit(1);})()'
       - name: Migrate
         run: DATABASE_URL=${{ env.TEST_DB_URL }} npx node-pg-migrate up -m migrations
       - name: Test
@@ -84,10 +86,7 @@ jobs:
           POSTGRES_PASSWORD: blep
           POSTGRES_DB: blep
         options: >-
-          --health-cmd "pg_isready -U blep" \
-          --health-interval 1s \
-          --health-timeout 5s \
-          --health-retries 30
+          --health-cmd "pg_isready -U blep" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node (backend)
@@ -104,6 +103,9 @@ jobs:
         env:
           DATABASE_URL: postgres://blep:blep@localhost:5432/blep
         run: npx node-pg-migrate up -m migrations
+      - name: Verify Postgres (fullstack job)
+        run: |
+          node -e 'const {Client}=require("pg");(async()=>{for(let i=0;i<40;i++){try{const c=new Client({connectionString:"postgres://blep:blep@localhost:5432/blep"});await c.connect();await c.end();console.log("Postgres ready");process.exit(0);}catch(e){await new Promise(r=>setTimeout(r,1000));}}console.error("Postgres not ready in time");process.exit(1);})()'
       - name: Start backend
         working-directory: backend
         env:
