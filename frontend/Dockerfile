@@ -12,9 +12,3 @@ WORKDIR /usr/share/nginx/html
 COPY --from=build /app/dist .
 EXPOSE 80
 CMD ["nginx","-g","daemon off;"]
-# Frontend Dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY frontend /app
-EXPOSE 8000
-CMD ["python", "-m", "http.server", "8000"]

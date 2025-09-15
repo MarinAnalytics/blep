@@ -117,6 +117,21 @@ Backend:
 - Integration: Vitest + Supertest (ephemeral Docker Postgres via `make backend-test`).
 - E2E: Vitest (spins actual Express server on random port after migrate + seed) via `make backend-e2e`.
 
+Browser E2E (full stack): Selenium WebDriver driving headless Chrome against real Docker stack.
+
+Run full browser E2E (requires Chrome installed):
+```
+make stack-e2e
+```
+To watch logs in another terminal while running:
+```
+make stack-logs
+```
+Set `HEADFUL=1` for visible browser:
+```
+HEADFUL=1 FRONTEND_URL=http://localhost:8080 make e2e-run
+```
+
 Run backend integration tests:
 ```
 make backend-test

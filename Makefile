@@ -15,7 +15,7 @@ BACKEND_DIR := backend
 NPM := npm --prefix $(FRONTEND_DIR)
 NPM_BACK := npm --prefix $(BACKEND_DIR)
 
-.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create backend-test-db-up backend-test-db-down backend-test backend-test-watch backend-seed backend-e2e stack-up stack-up-build stack-down stack-logs stack-ps
+.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create backend-test-db-up backend-test-db-down backend-test backend-test-watch backend-seed backend-e2e stack-up stack-up-build stack-down stack-logs stack-ps e2e-install e2e-run stack-e2e
 
 help:
 	@echo "Available targets:"
@@ -128,3 +128,15 @@ stack-logs: ## Follow logs for all services
 
 stack-ps: ## List running stack services
 	docker compose -f $(STACK_FILE) ps
+
+# --- Full-stack E2E (browser) using Selenium ---
+e2e-install: ## Install e2e test dependencies
+	npm --prefix e2e install
+
+e2e-run: e2e-install ## Run e2e tests (expects stack already up on localhost:8080/4000)
+	FRONTEND_URL=http://localhost:8080 BACKEND_HEALTH=http://localhost:4000/healthz npm --prefix e2e run test
+
+stack-e2e: ## Build & start stack, run e2e tests, then tear down
+	$(MAKE) stack-up-build
+	$(MAKE) e2e-run || (code=$$?; $(MAKE) stack-down; exit $$code)
+	$(MAKE) stack-down
