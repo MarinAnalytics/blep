@@ -54,25 +54,58 @@ export default function App() {
     setCatSrc(inImg);
   };
 
+  // Debounced / batched increment logic
+  const pendingIncrementsRef = useRef(0);
+  const flushTimerRef = useRef(null);
+  const debounceMs = Number(import.meta.env.VITE_BLEP_DEBOUNCE_MS || 400);
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+
+  const flushIncrements = React.useCallback(() => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+    const count = pendingIncrementsRef.current;
+    if (!count) return;
+    // Reset local counter before network call to avoid double counting on retries.
+    pendingIncrementsRef.current = 0;
+    if (flag.code && flag.name) {
+      fetch(`${apiBase}/api/blep`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country_code: flag.code, country_name: flag.name, count })
+      }).then(r => r.json())
+        .then(() => setRefreshToken(t => t + 1))
+        .catch(() => { /* swallow; optimistic UI already updated */ });
+    }
+  }, [apiBase, flag.code, flag.name]);
+
+  const scheduleFlush = () => {
+    if (flushTimerRef.current) return;
+    flushTimerRef.current = setTimeout(flushIncrements, debounceMs);
+  };
+
+  useEffect(() => {
+    const handleBeforeUnload = () => flushIncrements();
+    const handleVisibility = () => { if (document.visibilityState === 'hidden') flushIncrements(); };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [flushIncrements]);
+
   const handlePress = () => {
     swapToOut();
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
     }
-    setBlepCount(c => c + 1); // optimistic
-    const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
-    if (flag.code && flag.name) {
-      // Fire and forget; on success, trigger leaderboard refresh
-      fetch(`${apiBase}/api/blep`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ country_code: flag.code, country_name: flag.name })
-      }).then(r => r.json())
-        .then(() => setRefreshToken(t => t + 1))
-        .catch(() => {/* ignore */});
-    }
-    // Force layout to flush quickly (helps some Safari repaint timing)
+    // Optimistically update UI immediately.
+    setBlepCount(c => c + 1);
+    pendingIncrementsRef.current += 1;
+    scheduleFlush();
     if (typeof window !== 'undefined') {
       requestAnimationFrame(() => {});
     }

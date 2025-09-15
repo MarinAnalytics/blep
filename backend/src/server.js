@@ -41,16 +41,21 @@ export function _setBlepRateLimiterForTests(opts) {
 // POST increment (with rate limiting)
 app.post('/api/blep', (req, res, next) => blepRateLimiter(req, res, next), async (req, res) => {
   const { country_code, country_name } = req.body || {};
+  let { count } = req.body || {};
   if (!country_code || !country_name) {
     return res.status(400).json({ error: 'missing_country' });
   }
+  // Basic validation / bounding of batch size (prevent abusive large increments)
+  count = parseInt(count, 10);
+  if (Number.isNaN(count) || count < 1) count = 1;
+  if (count > 50) count = 50; // arbitrary safety cap
   try {
     const upsert = `INSERT INTO country_bleps (country_code, country_name, bleps)
-                    VALUES ($1, $2, 1)
+                    VALUES ($1, $2, $3)
                     ON CONFLICT (country_code)
-                    DO UPDATE SET bleps = country_bleps.bleps + 1
+                    DO UPDATE SET bleps = country_bleps.bleps + EXCLUDED.bleps
                     RETURNING country_code, country_name, bleps`;
-    const { rows } = await query(upsert, [country_code.toUpperCase(), country_name]);
+    const { rows } = await query(upsert, [country_code.toUpperCase(), country_name, count]);
     res.json(rows[0]);
   } catch (e) {
     console.error(e);

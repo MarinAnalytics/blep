@@ -42,12 +42,13 @@ export async function query(text, params = []) {
   if (/^INSERT INTO country_bleps/i.test(sql)) {
     const code = params[0].toUpperCase();
     const name = params[1];
+    const inc = typeof params[2] === 'number' ? params[2] : 1;
     const existing = inMemory.table.get(code);
     if (existing) {
-      existing.bleps += 1;
+      existing.bleps += inc;
       return { rows: [existing], rowCount: 1 };
     } else {
-      const row = { country_code: code, country_name: name, bleps: 1 };
+      const row = { country_code: code, country_name: name, bleps: inc };
       inMemory.table.set(code, row);
       return { rows: [row], rowCount: 1 };
     }

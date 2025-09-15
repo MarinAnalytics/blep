@@ -54,7 +54,7 @@ Endpoints:
 |--------|------|---------|
 | GET | `/healthz` | Liveness probe |
 | GET | `/api/leaderboard` | Top 50 countries ordered by bleps |
-| POST | `/api/blep` | Increment country blep count (body: `{ country_code, country_name }`) |
+| POST | `/api/blep` | Increment country blep count (body: `{ country_code, country_name, count? }`) |
 
 ---
 ### Database & Migrations
@@ -70,6 +70,7 @@ Frontend (`frontend/.env` from `.env.example`):
 | `VITE_INITIAL_BLEP_COUNT` | Starting counter value | `0` |
 | `VITE_AUDIO_VOLUME` | Audio volume 0-1 | `1.0` |
 | `VITE_API_BASE` | Backend API base URL (no trailing slash) | `http://localhost:4000` |
+| `VITE_BLEP_DEBOUNCE_MS` | Debounce window (ms) for batching clicks | `400` |
 
 Backend (`backend/.env` from `.env.example`):
 | Variable | Purpose | Example |
@@ -200,6 +201,18 @@ Configure via environment:
 Notes:
 * In-memory only; does not share state across multiple container instances.
 * Suitable for local use & small single-instance deployments; for production scaling, replace with Redis or database-backed algorithm.
+
+### Frontend Click Batching / Debounce
+Rapid sequential clicks are locally accumulated and sent as a single POST with a `count` field after a short debounce (`VITE_BLEP_DEBOUNCE_MS`, default 400ms). This reduces network chatter and lowers backend write amplification.
+
+Backend logic enforces:
+* Missing or invalid `count` => treated as 1.
+* `count` > 50 is capped at 50 per request (safety against abuse / lost debounce timers).
+* Response returns the updated row with the aggregated total.
+
+Edge considerations:
+* Pending increments flush on page visibility hidden and before unload.
+* Optimistic UI updates immediately; failures are silently ignored (UI remains optimistic until leaderboard refresh).
 
 ### In-Memory DB Fallback (Local Tests)
 If `DATABASE_URL` is not set, the backend swaps to an in-memory mock implementing only the queries used by the app/tests. This allows running unit & middleware tests without Postgres. Full integration / E2E coverage still requires a real database (e.g. via `docker compose` or the test compose file). The fallback is non-persistent and should never be used in production.
