@@ -7,7 +7,7 @@
 ### High-Level Architecture
 | Layer | Tech | Notes |
 |-------|------|-------|
-| Frontend | React 18 + Vite | Audio, pointer events, country flag lookup, (leaderboard placeholder) |
+| Frontend | React 18 + Vite | Audio, pointer events, country flag lookup, live leaderboard via backend |
 | Backend | Express | REST: `/api/blep`, `/api/leaderboard`, `/healthz` |
 | Database | PostgreSQL | Table `country_bleps` with trigger updating `updated_at` |
 | Migrations | node-pg-migrate | Auto-run in Docker via a dedicated `migrate` service |
@@ -17,12 +17,13 @@
 ---
 ### Features (Current)
 - Cat image press animation (optimized for tablets via pointer events & direct DOM swap).
-- Blep counter with configurable initial value & sound volume.
+- Blep counter with configurable initial value & sound volume (optimistic UI update).
 - Geo flag lookup via configurable API.
-- Backend persistence endpoints (ready for wiring into frontend leaderboard).
-- Postgres schema with upsert-based increment logic.
+- Live leaderboard fetched from backend (`/api/leaderboard`).
+- Persistent increments via backend `/api/blep` (country upsert logic).
+- Postgres schema with upsert + trigger updating `updated_at`.
 
-Planned (not yet implemented): live leaderboard integration, rate limiting, CI pipeline, PWA.
+Planned: rate limiting, CI pipeline, PWA, aggregate global metrics endpoint, security hardening.
 
 ---
 ### Frontend (Vite)
@@ -75,6 +76,7 @@ Frontend (`frontend/.env` from `.env.example`):
 | `VITE_FLAG_API` | Country lookup endpoint | `https://ipapi.co/json/?fields=country_code,country_name` |
 | `VITE_INITIAL_BLEP_COUNT` | Starting counter value | `0` |
 | `VITE_AUDIO_VOLUME` | Audio volume 0-1 | `1.0` |
+| `VITE_API_BASE` | Backend API base URL (no trailing slash) | `http://localhost:4000` |
 
 Backend (`backend/.env` from `.env.example`):
 | Variable | Purpose | Example |
@@ -104,17 +106,33 @@ From repo root:
 | `backend-test-db-up/down` | Start/stop ephemeral test PG |
 | `backend-test` | Run backend tests (provisions ephemeral PG) |
 | `backend-test-watch` | Watch mode tests (leaves PG up) |
+| `backend-seed` | Seed ephemeral test DB (leaves DB up) |
+| `backend-e2e` | Run backend e2e tests (migrate, seed, test, teardown) |
 | `deploy-gh-pages` | Build & push frontend to GitHub Pages |
 
 ---
 ### Testing Strategy
 Frontend: Vitest + RTL + jsdom (unit / interaction).
-Backend: Vitest + Supertest (integration) against ephemeral Docker Postgres (`docker-compose.test.yml`).
+Backend: 
+- Integration: Vitest + Supertest (ephemeral Docker Postgres via `make backend-test`).
+- E2E: Vitest (spins actual Express server on random port after migrate + seed) via `make backend-e2e`.
 
-Run backend tests manually:
+Run backend integration tests:
 ```
 make backend-test
 ```
+
+Run backend e2e tests (migrate + seed + server lifecycle):
+```
+make backend-e2e
+```
+
+Seed only (DB left up for inspection):
+```
+make backend-seed
+```
+
+Seeding script: `backend/scripts/seed.js` inserts baseline countries (US, CA, GB, DE) with starter blep counts.
 
 ---
 ### Full Stack via Docker
@@ -151,11 +169,12 @@ Adjust backend origin / CORS accordingly for production hosting strategy.
 
 ---
 ### Current Limitations / TODO
-- Frontend leaderboard still static (wire to `/api/leaderboard`).
-- No auth / rate limiting on increment endpoint.
+- No auth / rate limiting on increment endpoint (potential abuse).
 - No CI workflow (GitHub Actions) yet.
-- No global error boundary / logging solution.
-- No container healthchecks for backend/frontend (only DB currently).
+- No global error boundary / structured logging solution.
+- No container healthchecks for backend/frontend (only DB currently in docker-compose).
+- No aggregate global total endpoint (could be derived or cached).
+- No Playwright/Puppeteer full browser E2E covering frontend + backend together.
 
 ---
 ### Contributing / License
