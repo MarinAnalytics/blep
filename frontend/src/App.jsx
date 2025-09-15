@@ -8,7 +8,8 @@ export default function App() {
   const initialCount = Number(import.meta.env.VITE_INITIAL_BLEP_COUNT || 0) || 0;
   const [blepCount, setBlepCount] = useState(initialCount);
   const [catSrc, setCatSrc] = useState(inImg);
-  const [flag, setFlag] = useState({ url: '', alt: 'Loading flag...' });
+  const [flag, setFlag] = useState({ url: '', alt: 'Loading flag...', code: null, name: null });
+  const [refreshToken, setRefreshToken] = useState(0);
   const audioRef = useRef(null);
   const targetRef = useRef(null);
 
@@ -19,11 +20,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-  const apiUrl = import.meta.env.VITE_FLAG_API || 'https://ipapi.co/json/?fields=country_code,country_name';
-  fetch(apiUrl)
+    const apiUrl = import.meta.env.VITE_FLAG_API || 'https://ipapi.co/json/?fields=country_code,country_name';
+    fetch(apiUrl)
       .then(r => r.json())
-      .then(data => setFlag({ url: `https://flagcdn.com/w40/${data.country_code.toLowerCase()}.png`, alt: `${data.country_name} flag` }))
-      .catch(() => setFlag({ url: '', alt: 'Flag unavailable' }));
+      .then(data => setFlag({
+        url: `https://flagcdn.com/w40/${data.country_code.toLowerCase()}.png`,
+        alt: `${data.country_name} flag`,
+        code: data.country_code,
+        name: data.country_name,
+      }))
+      .catch(() => setFlag({ url: '', alt: 'Flag unavailable', code: null, name: null }));
   }, []);
 
   // Preload alternate image to avoid delay on first press (especially iOS Safari)
@@ -54,7 +60,18 @@ export default function App() {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
     }
-    setBlepCount(c => c + 1);
+    setBlepCount(c => c + 1); // optimistic
+    const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+    if (flag.code && flag.name) {
+      // Fire and forget; on success, trigger leaderboard refresh
+      fetch(`${apiBase}/api/blep`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country_code: flag.code, country_name: flag.name })
+      }).then(r => r.json())
+        .then(() => setRefreshToken(t => t + 1))
+        .catch(() => {/* ignore */});
+    }
     // Force layout to flush quickly (helps some Safari repaint timing)
     if (typeof window !== 'undefined') {
       requestAnimationFrame(() => {});
@@ -91,7 +108,7 @@ export default function App() {
         {flag.url && <img id="countryFlag" src={flag.url} alt={flag.alt} />}
         <span id="blepCounter">{blepCount.toLocaleString()}</span>
       </div>
-      <Leaderboard />
+  <Leaderboard refreshToken={refreshToken} />
     </div>
   );
 }

@@ -7,10 +7,19 @@ global.Audio = class {
   play() { return Promise.resolve(); }
 };
 
-// Mock fetch for flag API
-global.fetch = vi.fn(() => Promise.resolve({
-  json: () => Promise.resolve({ country_code: 'US', country_name: 'United States' })
-}));
+// Mock fetch for flag API, leaderboard and blep POST
+global.fetch = vi.fn((url, options = {}) => {
+  if (typeof url === 'string' && url.includes('ipapi.co')) {
+    return Promise.resolve({ json: () => Promise.resolve({ country_code: 'US', country_name: 'United States' }) });
+  }
+  if (typeof url === 'string' && url.includes('/api/leaderboard')) {
+    return Promise.resolve({ json: () => Promise.resolve([]) });
+  }
+  if (typeof url === 'string' && url.includes('/api/blep') && options.method === 'POST') {
+    return Promise.resolve({ json: () => Promise.resolve({ country_code: 'US', country_name: 'United States', bleps: 1 }) });
+  }
+  return Promise.resolve({ json: () => Promise.resolve({}) });
+});
 
 describe('App', () => {
   test('renders counter starting at configured initial value', () => {
