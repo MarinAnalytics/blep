@@ -5,7 +5,9 @@ dotenv.config();
 
 const { Pool } = pkg;
 
-const forceInMemory = process.env.IN_MEMORY_DB === '1' || (process.env.NODE_ENV === 'test' && !process.env.ALLOW_REAL_DB);
+// Only use in-memory store when explicitly opted in via IN_MEMORY_DB=1.
+// (Previously we auto-switched for NODE_ENV=test which broke seeded e2e tests.)
+const forceInMemory = process.env.IN_MEMORY_DB === '1';
 const connectionString = process.env.DATABASE_URL;
 
 let pool = null;
