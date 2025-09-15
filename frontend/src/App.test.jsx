@@ -22,28 +22,29 @@ global.fetch = vi.fn((url, options = {}) => {
 });
 
 describe('App', () => {
-  test('renders counter starting at configured initial value', () => {
+  test('renders counter starting at configured initial value', async () => {
     const initial = 3;
     import.meta.env.VITE_INITIAL_BLEP_COUNT = String(initial);
     render(<App />);
-    expect(screen.getByText(initial.toLocaleString())).toBeInTheDocument();
+    // Await the counter appearing (effect-driven updates wrapped in act internally)
+    expect(await screen.findByText(initial.toLocaleString())).toBeInTheDocument();
   });
 
   test('increments counter on click/press', async () => {
     import.meta.env.VITE_INITIAL_BLEP_COUNT = '0';
     render(<App />);
-    const button = screen.getByRole('button', { name: /boop the snoot/i });
+    const button = await screen.findByRole('button', { name: /boop the snoot/i });
     fireEvent.pointerDown(button, { pointerId: 1, pointerType: 'touch' });
     fireEvent.pointerUp(button, { pointerId: 1, pointerType: 'touch' });
     expect(await screen.findByText('1')).toBeInTheDocument();
   });
 
-  test('keyboard activation increments counter', () => {
+  test('keyboard activation increments counter', async () => {
     import.meta.env.VITE_INITIAL_BLEP_COUNT = '0';
     render(<App />);
-    const button = screen.getByRole('button', { name: /boop the snoot/i });
+    const button = await screen.findByRole('button', { name: /boop the snoot/i });
     fireEvent.keyDown(button, { key: 'Enter' });
     fireEvent.keyUp(button, { key: 'Enter' });
-    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(await screen.findByText('1')).toBeInTheDocument();
   });
 });
