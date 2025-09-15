@@ -108,7 +108,14 @@ From repo root:
 | `backend-test-watch` | Watch mode tests (leaves PG up) |
 | `backend-seed` | Seed ephemeral test DB (leaves DB up) |
 | `backend-e2e` | Run backend e2e tests (migrate, seed, test, teardown) |
-| `deploy-gh-pages` | Build & push frontend to GitHub Pages |
+| `stack-up` | Start full docker stack (cached images) |
+| `stack-up-build` | Build then start full docker stack |
+| `stack-down` | Stop & remove stack containers/network |
+| `stack-logs` | Tail logs for all stack services |
+| `stack-ps` | List running stack services |
+| `e2e-install` | Install browser E2E dependencies |
+| `e2e-run` | Run Selenium tests against existing stack |
+| `stack-e2e` | Build stack, run Selenium tests, teardown |
 
 ---
 ### Testing Strategy
@@ -131,6 +138,13 @@ Set `HEADFUL=1` for visible browser:
 ```
 HEADFUL=1 FRONTEND_URL=http://localhost:8080 make e2e-run
 ```
+
+Browser E2E details:
+- Harness code: `e2e/test.e2e.mjs`
+- Headless by default; set `HEADFUL=1` for an interactive session.
+- Uses CSS selectors: `#targetArea` (click target), `#blepCounter`, `.leaderboard-item` rows.
+- Asserts both local counter and leaderboard increment for detected country.
+- Retries flag acquisition briefly; fails if country cannot be determined.
 
 Run backend integration tests:
 ```
@@ -176,13 +190,6 @@ docker compose down -v
 
 ---
 ### Deployment (Static Frontend)
-GitHub Pages deploy (frontend only):
-```
-make deploy-gh-pages
-```
-Adjust backend origin / CORS accordingly for production hosting strategy.
-
----
 ### Current Limitations / TODO
 - No auth / rate limiting on increment endpoint (potential abuse).
 - No CI workflow (GitHub Actions) yet.
