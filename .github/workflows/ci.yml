@@ -75,12 +75,15 @@ jobs:
         run: |
           node -e 'const {Client}=require("pg");(async()=>{for(let i=0;i<40;i++){try{const c=new Client({connectionString:process.env.TEST_DB_URL});await c.connect();await c.end();console.log("Postgres ready");process.exit(0);}catch(e){await new Promise(r=>setTimeout(r,1000));}}console.error("Postgres not ready in time");process.exit(1);})()'
       - name: Migrate
-        run: DATABASE_URL=${{ env.TEST_DB_URL }} npx node-pg-migrate up -m migrations
+        run: |
+          # Explicitly pass connection string; relying only on implicit defaults would hit 5432 instead of mapped 54329
+          npx node-pg-migrate up -m migrations -d ${{ env.TEST_DB_URL }}
       - name: Test
         run: DATABASE_URL=${{ env.TEST_DB_URL }} npm test
       - name: Backend E2E (API level)
         run: |
-          DATABASE_URL=${{ env.TEST_DB_URL }} npx node-pg-migrate up -m migrations
+          # Use -d to ensure node-pg-migrate uses the correct port (54329) instead of default 5432
+          npx node-pg-migrate up -m migrations -d ${{ env.TEST_DB_URL }}
           DATABASE_URL=${{ env.TEST_DB_URL }} npm run seed
           DATABASE_URL=${{ env.TEST_DB_URL }} npm run test:e2e
 
@@ -117,7 +120,9 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: postgres://blep:blep@localhost:5432/blep
-        run: npx node-pg-migrate up -m migrations
+        run: |
+          # Explicit -d avoids any accidental fallback to default host/port
+          npx node-pg-migrate up -m migrations -d postgres://blep:blep@localhost:5432/blep
       - name: Verify Postgres (fullstack job)
         run: |
           node -e 'const {Client}=require("pg");(async()=>{for(let i=0;i<40;i++){try{const c=new Client({connectionString:"postgres://blep:blep@localhost:5432/blep"});await c.connect();await c.end();console.log("Postgres ready");process.exit(0);}catch(e){await new Promise(r=>setTimeout(r,1000));}}console.error("Postgres not ready in time");process.exit(1);})()'
