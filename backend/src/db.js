@@ -5,12 +5,13 @@ dotenv.config();
 
 const { Pool } = pkg;
 
+const forceInMemory = process.env.IN_MEMORY_DB === '1' || (process.env.NODE_ENV === 'test' && !process.env.ALLOW_REAL_DB);
 const connectionString = process.env.DATABASE_URL;
 
 let pool = null;
 let inMemory = null;
 
-if (connectionString) {
+if (connectionString && !forceInMemory) {
   pool = new Pool({ connectionString, max: 10 });
   console.log('Using real Postgres connection');
 } else {
