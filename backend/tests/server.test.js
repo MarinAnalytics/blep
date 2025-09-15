@@ -1,7 +1,7 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/server.js';
-import { pool, query } from '../src/db.js';
+import { query } from '../src/db.js';
 
 // Use a transaction per test to isolate, or recreate schema quickly. Simplest: clean table before each run.
 
@@ -9,9 +9,7 @@ beforeAll(async () => {
   await query('DELETE FROM country_bleps');
 });
 
-afterAll(async () => {
-  await pool.end();
-});
+// Pool closed in global teardown (omitted here to avoid race with other tests)
 
 describe('health', () => {
   it('returns ok', async () => {

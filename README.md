@@ -84,6 +84,8 @@ Backend (`backend/.env` from `.env.example`):
 | `DATABASE_URL` | Postgres connection string | `postgres://user:pass@localhost:5432/blep` |
 | `PORT` | Server port | `4000` |
 | `CORS_ORIGINS` | Comma list of allowed origins | `http://localhost:5173` |
+| `RATE_LIMIT_WINDOW_MS` | Window size for blep rate limit | `60000` |
+| `RATE_LIMIT_MAX_BLEPS` | Max blep POSTs per IP per window | `120` |
 
 Docker Compose sets its own `DATABASE_URL`, `PORT`, `CORS_ORIGINS` for internal networking.
 
@@ -192,6 +194,7 @@ docker compose down -v
 ### Deployment (Static Frontend)
 ### Current Limitations / TODO
 - No auth / rate limiting on increment endpoint (potential abuse).
+	- (Rate limiting now added: simple in-memory IP-based; still no auth.)
 - No CI workflow (GitHub Actions) yet.
 - No global error boundary / structured logging solution.
 - No container healthchecks for backend/frontend (only DB currently in docker-compose).

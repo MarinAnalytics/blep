@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { query } from './db.js';
+import { createRateLimiter } from './rateLimiter.js';
 
 dotenv.config();
 
@@ -26,8 +27,19 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-// POST increment
-app.post('/api/blep', async (req, res) => {
+// Rate limiter (IP-based) for blep endpoint
+let blepRateLimiter = createRateLimiter({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
+  max: parseInt(process.env.RATE_LIMIT_MAX_BLEPS || '120', 10)
+});
+
+// Test helper to override limiter config without reloading module
+export function _setBlepRateLimiterForTests(opts) {
+  blepRateLimiter = createRateLimiter(opts);
+}
+
+// POST increment (with rate limiting)
+app.post('/api/blep', (req, res, next) => blepRateLimiter(req, res, next), async (req, res) => {
   const { country_code, country_name } = req.body || {};
   if (!country_code || !country_name) {
     return res.status(400).json({ error: 'missing_country' });
@@ -57,7 +69,7 @@ export function start(portOverride) {
   return server;
 }
 
-// Start only if run directly (node src/server.js)
-if (process.argv[1] && process.argv[1].includes('server.js')) {
+// Start only if this file is the entrypoint (node src/server.js) and not under Vitest
+if (import.meta.url === `file://${process.argv[1]}` && !process.env.VITEST_WORKER_ID) {
   start();
 }
