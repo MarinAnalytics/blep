@@ -15,7 +15,7 @@ BACKEND_DIR := backend
 NPM := npm --prefix $(FRONTEND_DIR)
 NPM_BACK := npm --prefix $(BACKEND_DIR)
 
-.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create backend-test-db-up backend-test-db-down backend-test backend-test-watch backend-seed backend-e2e stack-up stack-up-build stack-down stack-logs stack-ps e2e-install e2e-run stack-e2e
+.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create backend-test-db-up backend-test-db-down backend-test backend-test-watch backend-seed backend-e2e stack-up stack-up-build stack-down stack-logs stack-ps stack-db-truncate e2e-install e2e-run stack-e2e
 
 help:
 	@echo "Available targets:"
@@ -117,6 +117,10 @@ stack-logs: ## Follow logs for all services
 
 stack-ps: ## List running stack services
 	docker compose -f $(STACK_FILE) ps
+
+stack-db-truncate: ## Truncate country_bleps table in running dockerized Postgres (requires stack-up)
+	@echo "Truncating country_bleps..."; \
+docker compose -f $(STACK_FILE) exec -T db psql -U blep -d blep -c "TRUNCATE TABLE country_bleps;" && echo "Done." || (echo "Failed (is the stack up?)"; exit 1)
 
 # --- Full-stack E2E (browser) using Selenium ---
 e2e-install: ## Install e2e test dependencies
