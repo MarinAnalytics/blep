@@ -124,19 +124,19 @@ export default function App() {
         role="button"
         aria-label="Boop the snoot"
         tabIndex={0}
-    onPointerDown={(e) => { e.preventDefault(); handlePress(); }}
-    onPointerUp={(e) => { e.preventDefault(); handleRelease(); }}
-    onPointerLeave={(e) => { if (e.pointerType !== 'mouse') handleRelease(); }}
+        onPointerDown={(e) => { e.preventDefault(); handlePress(); }}
+        onPointerUp={(e) => { e.preventDefault(); handleRelease(); }}
+        onPointerLeave={(e) => { if (e.pointerType !== 'mouse') handleRelease(); }}
         onKeyDown={(e) => {
           if (e.key === ' ' || e.key === 'Enter') {
             e.preventDefault();
-      handlePress();
+            handlePress();
           }
         }}
         onKeyUp={(e) => {
           if (e.key === ' ' || e.key === 'Enter') {
             e.preventDefault();
-      handleRelease();
+            handleRelease();
           }
         }}
       />
@@ -144,7 +144,7 @@ export default function App() {
         {flag.url && <img id="countryFlag" src={flag.url} alt={flag.alt} />}
         <span id="blepCounter">{blepCount.toLocaleString()}</span>
       </div>
-  <Leaderboard refreshToken={refreshToken} />
+      <Leaderboard refreshToken={refreshToken} />
     </div>
   );
 }
