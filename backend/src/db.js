@@ -21,3 +21,7 @@ export async function query(text, params) {
   }
   return res;
 }
+
+export async function closePool() {
+  await pool.end();
+}

@@ -15,7 +15,7 @@ BACKEND_DIR := backend
 NPM := npm --prefix $(FRONTEND_DIR)
 NPM_BACK := npm --prefix $(BACKEND_DIR)
 
-.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create backend-test-db-up backend-test-db-down backend-test backend-test-watch
+.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create backend-test-db-up backend-test-db-down backend-test backend-test-watch backend-seed backend-e2e
 
 help:
 	@echo "Available targets:"
@@ -100,3 +100,13 @@ backend-test: backend-install backend-test-db-up ## Run backend test suite again
 
 backend-test-watch: backend-install backend-test-db-up ## Run backend tests in watch (leave DB up) CTRL+C then run backend-test-db-down
 	cd $(BACKEND_DIR) && DATABASE_URL=$(TEST_DB_URL) npx node-pg-migrate up -m migrations && DATABASE_URL=$(TEST_DB_URL) npm run test:watch
+
+backend-seed: backend-install backend-test-db-up ## Seed the test database with sample data (uses seed script) then leaves DB up
+	cd $(BACKEND_DIR) && DATABASE_URL=$(TEST_DB_URL) npm run seed
+
+backend-e2e: backend-install backend-test-db-up ## Run end-to-end tests (migrate, seed, then run e2e spec) with cleanup
+	( cd $(BACKEND_DIR) \
+		&& DATABASE_URL=$(TEST_DB_URL) npx node-pg-migrate up -m migrations \
+		&& DATABASE_URL=$(TEST_DB_URL) npm run seed \
+		&& DATABASE_URL=$(TEST_DB_URL) npm run test:e2e ); code=$$?; \
+	$(MAKE) backend-test-db-down; exit $$code

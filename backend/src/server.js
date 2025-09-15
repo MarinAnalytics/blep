@@ -49,11 +49,12 @@ app.post('/api/blep', async (req, res) => {
 // Health
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
-export function start() {
-  const port = process.env.PORT || 4000;
-  return app.listen(port, () => {
-    console.log(`Backend listening on :${port}`);
+export function start(portOverride) {
+  const port = portOverride || process.env.PORT || 4000;
+  const server = app.listen(port, () => {
+    console.log(`Backend listening on :${server.address().port}`);
   });
+  return server;
 }
 
 // Start only if run directly (node src/server.js)
