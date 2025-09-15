@@ -3,7 +3,6 @@
 
 "Boop the snoot" clicker rebuilt as a React + Vite SPA with an Express + Postgres backend and full Docker & Makefile tooling.
 
----
 ### High-Level Architecture
 | Layer | Tech | Notes |
 |-------|------|-------|
@@ -14,16 +13,10 @@
 | Testing | Vitest + React Testing Library / Supertest | Separate frontend + backend suites; backend uses ephemeral Docker PG for tests |
 | Containerization | Multi-stage (frontend build → nginx, backend node runtime) | `docker-compose.yml` orchestrates full stack |
 
----
 ### Features (Current)
-- Cat image press animation (optimized for tablets via pointer events & direct DOM swap).
-- Blep counter with configurable initial value & sound volume (optimistic UI update).
-- Geo flag lookup via configurable API.
-- Live leaderboard fetched from backend (`/api/leaderboard`).
-- Persistent increments via backend `/api/blep` (country upsert logic).
-- Postgres schema with upsert + trigger updating `updated_at`.
+ - In-memory per-IP rate limiting on `/api/blep` (configurable window & max requests) returning 429 with retry metadata.
 
-Planned: rate limiting, CI pipeline, PWA, aggregate global metrics endpoint, security hardening.
+Planned: CI pipeline, PWA, aggregate global metrics endpoint, security hardening.
 
 ---
 ### Frontend (Vite)
@@ -115,6 +108,7 @@ From repo root:
 | `stack-down` | Stop & remove stack containers/network |
 | `stack-logs` | Tail logs for all stack services |
 | `stack-ps` | List running stack services |
+| `stack-db-truncate` | Truncate `country_bleps` table in running stack |
 | `e2e-install` | Install browser E2E dependencies |
 | `e2e-run` | Run Selenium tests against existing stack |
 | `stack-e2e` | Build stack, run Selenium tests, teardown |
@@ -192,9 +186,27 @@ docker compose down -v
 
 ---
 ### Deployment (Static Frontend)
+### Rate Limiting
+`/api/blep` is protected by a simple in-memory fixed-window limiter (per IP):
+
+Response when exceeded (HTTP 429):
+```json
+{ "error": "rate_limited", "retry_after_ms": <milliseconds until window resets> }
+```
+Configure via environment:
+* `RATE_LIMIT_WINDOW_MS` (default 60000)
+* `RATE_LIMIT_MAX_BLEPS` (default 120)
+
+Notes:
+* In-memory only; does not share state across multiple container instances.
+* Suitable for local use & small single-instance deployments; for production scaling, replace with Redis or database-backed algorithm.
+
+### In-Memory DB Fallback (Local Tests)
+If `DATABASE_URL` is not set, the backend swaps to an in-memory mock implementing only the queries used by the app/tests. This allows running unit & middleware tests without Postgres. Full integration / E2E coverage still requires a real database (e.g. via `docker compose` or the test compose file). The fallback is non-persistent and should never be used in production.
+
+### Deployment
 ### Current Limitations / TODO
-- No auth / rate limiting on increment endpoint (potential abuse).
-	- (Rate limiting now added: simple in-memory IP-based; still no auth.)
+- No auth on increment endpoint (only basic per-IP rate limit; still susceptible to distributed abuse).
 - No CI workflow (GitHub Actions) yet.
 - No global error boundary / structured logging solution.
 - No container healthchecks for backend/frontend (only DB currently in docker-compose).
