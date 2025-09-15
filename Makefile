@@ -15,7 +15,7 @@ BACKEND_DIR := backend
 NPM := npm --prefix $(FRONTEND_DIR)
 NPM_BACK := npm --prefix $(BACKEND_DIR)
 
-.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create backend-test-db-up backend-test-db-down backend-test backend-test-watch backend-seed backend-e2e
+.PHONY: help frontend-install frontend-up frontend-build frontend-preview frontend-test frontend-test-watch clean-dist deploy-gh-pages backend-install backend-dev backend-start backend-migrate backend-migrate-up backend-migrate-down backend-migrate-create backend-test-db-up backend-test-db-down backend-test backend-test-watch backend-seed backend-e2e stack-up stack-up-build stack-down stack-logs stack-ps
 
 help:
 	@echo "Available targets:"
@@ -110,3 +110,21 @@ backend-e2e: backend-install backend-test-db-up ## Run end-to-end tests (migrate
 		&& DATABASE_URL=$(TEST_DB_URL) npm run seed \
 		&& DATABASE_URL=$(TEST_DB_URL) npm run test:e2e ); code=$$?; \
 	$(MAKE) backend-test-db-down; exit $$code
+
+# --- Full Docker Stack (frontend + backend + db) ---
+STACK_FILE=docker-compose.yml
+
+stack-up: ## Start full stack (no rebuild) in background
+	docker compose -f $(STACK_FILE) up -d
+
+stack-up-build: ## Build images then start full stack
+	docker compose -f $(STACK_FILE) up -d --build
+
+stack-down: ## Stop and remove stack containers, networks, volumes (persistent DB volume retained by default)
+	docker compose -f $(STACK_FILE) down
+
+stack-logs: ## Follow logs for all services
+	docker compose -f $(STACK_FILE) logs -f
+
+stack-ps: ## List running stack services
+	docker compose -f $(STACK_FILE) ps
